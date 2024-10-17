@@ -1,13 +1,10 @@
+require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
 const mongoose = require("mongoose");
-const dotenv = require("dotenv");
 const routes = require("./routes/index"); // Adjust the path as necessary
 const cors = require("cors");
 
-dotenv.config(); // Load environment variables from .env file
-
 const app = express();
-
 // Middleware
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse incoming JSON requests
@@ -24,7 +21,7 @@ app.use("/api", routes); // Mounting routes under /api
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ status: false, message: "Internal Server Error" });
+  res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
 // Starting the server
