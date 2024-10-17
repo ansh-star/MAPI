@@ -1,3 +1,4 @@
+const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
 
 // Secret key for signing the token (in production, store this securely, e.g., in environment variables)
@@ -11,7 +12,6 @@ const generateToken = (user) => {
     id: user._id, // MongoDB ObjectId of the user
     role: user.role, // 'admin', 'wholesaler', 'retailer', 'delivery'
   };
-
   // Generate a signed JWT token with the payload and secret
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
@@ -24,7 +24,7 @@ const verifyToken = (req, res, next) => {
   if (!token) {
     return res
       .status(401)
-      .json({ status: false, message: "Access denied. No token provided." });
+      .json({ success: false, message: "Access denied. No token provided." });
   }
 
   try {
@@ -33,7 +33,7 @@ const verifyToken = (req, res, next) => {
     req.user = decoded; // Attach the decoded user information (e.g., id, role)
     next(); // Pass to the next middleware/route handler
   } catch (error) {
-    return res.status(400).json({ status: false, message: "Invalid token" });
+    return res.status(400).json({ success: false, message: "Invalid token" });
   }
 };
 

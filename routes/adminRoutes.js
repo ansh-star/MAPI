@@ -5,6 +5,7 @@ const {
   validateAdminSignUpBody,
   validateAdminLoginBody,
 } = require("../controllers/authBodyChecker");
+
 // Signup and Login for Admin
 router.post("/signup", validateAdminSignUpBody, signupAdmin);
 router.post("/login", validateAdminLoginBody, loginAdmin);
