@@ -44,4 +44,26 @@ const validateAdminLoginBody = [
     .withMessage("Admin key must be at least 8 characters long"),
 ];
 
-module.exports = { validateAdminSignUpBody, validateAdminLoginBody };
+const validateUserSignupBody = [
+  body("username").notEmpty().withMessage("Username is required"),
+  body("fullName").notEmpty().withMessage("Full Name is required"),
+  body("mobileNumber")
+    .isNumeric()
+    .isLength({ min: 10, max: 10 })
+    .withMessage("Enter a valid mobile number"),
+  body("role").isIn([0, 1, 2]).withMessage("Invalid role specified"), // Role must be Wholeseller (0), Retailer (1), or Delivery Partner (2)
+];
+
+const validateUserLoginBody = [
+  body("mobileNumber")
+    .isNumeric()
+    .isLength({ min: 10, max: 10 })
+    .withMessage("Enter a valid mobile number"),
+];
+
+module.exports = {
+  validateAdminSignUpBody,
+  validateAdminLoginBody,
+  validateUserLoginBody,
+  validateUserSignupBody,
+};
