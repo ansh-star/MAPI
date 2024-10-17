@@ -1,124 +1,126 @@
 const Admin = require("../models/Admin");
-const Retailer = require("../models/Retailer");
-const Wholesaler = require("../models/Wholesaler");
-const DeliveryPartner = require("../models/DeliveryPartner");
-const { sendOTP, verifyOTP } = require("./otpController");
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
+const User = require("../models/User"); // Import your User model
+const { generateToken } = require("../utils/tokenGenerator");
 
 // Function to handle Admin signup
 const signupAdmin = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({ success: false, errors: errors.array() });
   }
   const { username, mobileNumber, location, adminKey } = req.body;
   try {
+    const isExistUser = Admin.findOne({ mobileNumber });
+
+    if (isExistUser) {
+      return res.status(200).json({
+        success: true,
+        message: "Phone Number already Exists",
+      });
+    }
+
     const admin = new Admin({ username, mobileNumber, location, adminKey });
     await admin.save();
-    res
-      .status(201)
-      .json({ status: true, message: "Admin registered successfully!" });
+    res.status(201).json({
+      success: true,
+      message: "Admin registered successfully!",
+      role: 3,
+      user: {
+        id: admin._id,
+        username: admin.username,
+        location: admin.location,
+      },
+      token: generateToken(admin),
+    });
   } catch (error) {
     res.status(500).json({
-      status: false,
+      success: false,
       message: "Admin registration failed",
       error: error.message,
     });
   }
 };
 
-// Function to handle Retailer signup
-const signupRetailer = async (req, res) => {
+// Signup function for user
+const signupUser = async (req, res) => {
+  // Validate request body
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "User Sign Up failed",
+      errors: errors.array(),
+    });
+  }
+
   const {
     username,
     fullName,
-    shopName,
+    shopOrHospitalName,
     mobileNumber,
     location,
+    email,
     dealershipLicenseNumber,
     dealershipLicenseImage,
+    role,
+    addressList,
   } = req.body;
 
   try {
-    const retailer = new Retailer({
+    // Check if the user already exists
+    const existingUser = await User.findOne({ mobileNumber });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        msg: "User already exists with this mobile number.",
+      });
+    }
+
+    // If the role is Wholeseller (0) or Retailer (1), ensure mandatory fields are provided
+    if (role === 0 || role === 1) {
+      if (
+        !shopOrHospitalName ||
+        !dealershipLicenseNumber ||
+        !dealershipLicenseImage
+      ) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "Shop/Hospital Name, Dealership License Number, and Dealership License Image are required for Wholeseller and Retailer.",
+        });
+      }
+    }
+
+    // Create a new user
+    const newUser = new User({
       username,
       fullName,
-      shopName,
+      shopOrHospitalName,
       mobileNumber,
       location,
+      email,
       dealershipLicenseNumber,
       dealershipLicenseImage,
+      role,
+      addressList,
+      user_verified: false, // Initially set to false
     });
-    await retailer.save();
-    res
-      .status(201)
-      .json({ status: true, message: "Retailer registered successfully!" });
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: "Retailer registration failed",
-      error: error.message,
-    });
-  }
-};
 
-// Function to handle Wholesaler signup
-const signupWholesaler = async (req, res) => {
-  const {
-    username,
-    fullName,
-    shopName,
-    mobileNumber,
-    location,
-    dealershipLicenseNumber,
-    dealershipLicenseImage,
-  } = req.body;
+    // Save the user to the database
+    await newUser.save();
 
-  try {
-    const wholesaler = new Wholesaler({
-      username,
-      fullName,
-      shopName,
-      mobileNumber,
-      location,
-      dealershipLicenseNumber,
-      dealershipLicenseImage,
-    });
-    await wholesaler.save();
-    res
-      .status(201)
-      .json({ status: true, message: "Wholesaler registered successfully!" });
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: "Wholesaler registration failed",
-      error: error.message,
-    });
-  }
-};
-
-// Function to handle Delivery Partner signup
-const signupDeliveryPartner = async (req, res) => {
-  const { username, mobileNumber, location } = req.body;
-
-  try {
-    const deliveryPartner = new DeliveryPartner({
-      username,
-      mobileNumber,
-      location,
-    });
-    await deliveryPartner.save();
+    // Respond with success
     res.status(201).json({
-      status: true,
-      message: "Delivery Partner registered successfully!",
+      success: true,
+      message: "User created successfully!",
+      user: newUser.toObject(),
+      token: generateToken(newUser),
     });
   } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: "Delivery Partner registration failed",
-      error: error.message,
-    });
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -134,107 +136,59 @@ const loginAdmin = async (req, res) => {
         .json({ status: false, message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-      { id: admin._id, role: "admin" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-    res.json({ status: true, message: "Login successful", token });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ status: false, message: "Login failed", error: error.message });
-  }
-};
+    const token = generateToken({ _id: admin._id, role: 3 });
 
-// Function to handle Retailer login
-const loginRetailer = async (req, res) => {
-  const { mobileNumber, dealershipLicenseNumber } = req.body;
-
-  try {
-    const retailer = await Retailer.findOne({
-      mobileNumber,
-      dealershipLicenseNumber,
+    res.json({
+      success: true,
+      message: "Login successful",
+      user: admin.toObject(),
+      token: generateToken(admin),
     });
-    if (!retailer) {
-      return res
-        .status(401)
-        .json({ status: false, message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign(
-      { id: retailer._id, role: "retailer" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-    res.json({ status: true, message: "Login successful", token });
   } catch (error) {
     res
       .status(500)
-      .json({ status: false, message: "Login failed", error: error.message });
+      .json({ success: false, message: "Login failed", error: error.message });
   }
 };
 
-// Function to handle Wholesaler login
-const loginWholesaler = async (req, res) => {
-  const { mobileNumber, dealershipLicenseNumber } = req.body;
-
-  try {
-    const wholesaler = await Wholesaler.findOne({
-      mobileNumber,
-      dealershipLicenseNumber,
-    });
-    if (!wholesaler) {
-      return res
-        .status(401)
-        .json({ status: false, message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign(
-      { id: wholesaler._id, role: "wholesaler" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-    res.json({ status: true, message: "Login successful", token });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ status: false, message: "Login failed", error: error.message });
-  }
-};
-
-// Function to handle Delivery Partner login
-const loginDeliveryPartner = async (req, res) => {
+// Login function for User
+const loginUser = async (req, res) => {
   const { mobileNumber } = req.body;
 
   try {
-    const deliveryPartner = await DeliveryPartner.findOne({ mobileNumber });
-    if (!deliveryPartner) {
-      return res
-        .status(401)
-        .json({ status: false, message: "Invalid credentials" });
+    // Check if the user exists by mobile number and username
+    const user = await User.findOne({ mobileNumber });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid mobile number or username.",
+      });
+    } else {
+      // Successful login, return user data (you might want to include a JWT token here for session management)
+      return res.status(200).json({
+        success: true,
+        message: "Login successful!",
+        user: {
+          id: user._id,
+          username: user.username,
+          fullName: user.fullName,
+          mobileNumber: user.mobileNumber,
+          role: user.role,
+          addressList: user.addressList,
+          products: user.products,
+          cart: user.cart,
+        },
+        token: generateToken(user),
+      });
     }
-
-    const token = jwt.sign(
-      { id: deliveryPartner._id, role: "deliveryPartner" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-    res.json({ status: true, message: "Login successful", token });
   } catch (error) {
-    res
-      .status(500)
-      .json({ status: false, message: "Login failed", error: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 module.exports = {
   signupAdmin,
-  signupRetailer,
-  signupWholesaler,
-  signupDeliveryPartner,
+  signupUser,
   loginAdmin,
-  loginRetailer,
-  loginWholesaler,
-  loginDeliveryPartner,
+  loginUser,
 };
