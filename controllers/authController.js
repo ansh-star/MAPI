@@ -12,7 +12,7 @@ const signupAdmin = async (req, res) => {
   }
   const { username, mobileNumber, location, adminKey } = req.body;
   try {
-    const isExistUser = Admin.findOne({ mobileNumber });
+    const isExistUser = await Admin.findOne({ mobileNumber });
 
     if (isExistUser) {
       return res.status(200).json({
