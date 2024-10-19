@@ -24,14 +24,7 @@ const adminSchema = new mongoose.Schema({
     // Separate array for Wholesalers
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Wholesaler",
-    },
-  ],
-  retailerRequests: [
-    // Separate array for Retailers
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Retailer",
+      ref: "User",
     },
   ],
   productList: [
