@@ -1,6 +1,7 @@
 const Admin = require("../models/Admin");
+const Product = require("../models/Product");
 const User = require("../models/User");
-
+const Roles = require("../utils/roles");
 const updateAdminDetails = async (req, res) => {
   const { username, mobileNumber, location } = req.body;
   try {
@@ -64,7 +65,7 @@ const updateUserDetails = async (req, res) => {
     if (!updatedUser) {
       return res.status(400).json({
         success: false,
-        msg: "User does not exists with this id.",
+        message: "User does not exists with this id.",
       });
     }
     // Respond with success
@@ -79,4 +80,102 @@ const updateUserDetails = async (req, res) => {
   }
 };
 
-module.exports = { updateUserDetails, updateAdminDetails };
+const updateProducts = async (req, res) => {
+  const {
+    id,
+    medicine_name,
+    composition,
+    uses,
+    side_effects,
+    image_url,
+    manufacturer,
+  } = req.body;
+  const { id: userId, role } = req.user;
+  try {
+    if (role === Roles.DELIVERY_PARTNER || role === Roles.RETAILER) {
+      return res.status(400).json({
+        success: false,
+        message: "This role cannot update the product",
+      });
+    } else if (role === Roles.WHOLESALER) {
+      const existsProduct = await User.findOne({ _id: userId, products: id });
+      if (!existsProduct) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User cannot change this product" });
+      }
+    }
+    const updatedProduct = await Product.findOneAndUpdate(
+      { _id: id },
+      {
+        Medicine_Name: medicine_name,
+        Composition: composition,
+        Uses: uses,
+        Side_effects: side_effects,
+        Image_URL: image_url,
+        Manufacturer: manufacturer,
+      },
+      { new: true }
+    );
+    if (!updatedProduct) {
+      return res.status(400).json({
+        success: false,
+        message: "Product does not exists with this id.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated Successfully",
+      product: updatedProduct.toObject(),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const verifyUser = async (req, res) => {
+  const { id: adminId, role } = req.body;
+
+  if (role !== Roles.ADMIN) {
+    return res.status(400).json({
+      success: false,
+      message: "This role cannot verify the user",
+    });
+  }
+
+  const { id: userId, adminKey } = req.body;
+  try {
+    const admin = await Admin.findOne({ _id: adminId, adminKey });
+
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin does not exists with this id.",
+      });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { _id: userId },
+      { isVerified: true },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User verified successfully",
+      user: user.toObject(),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+module.exports = {
+  updateUserDetails,
+  updateAdminDetails,
+  updateProducts,
+  verifyUser,
+};

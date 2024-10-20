@@ -5,7 +5,10 @@ const {
   validateAdminSignUpBody,
   validateAdminLoginBody,
 } = require("../controllers/authBodyChecker");
-const { updateAdminDetails } = require("../controllers/updateController");
+const {
+  updateAdminDetails,
+  verifyUser,
+} = require("../controllers/updateController");
 const { deleteAdminDetails } = require("../controllers/deleteController");
 const { verifyToken } = require("../utils/tokenGenerator");
 
@@ -17,5 +20,6 @@ router.post("/login", validateAdminLoginBody, loginAdmin);
 router.use(verifyToken);
 router.put("", updateAdminDetails);
 router.delete("", deleteAdminDetails);
+router.put("/verfiy-user", verifyUser);
 
 module.exports = router;

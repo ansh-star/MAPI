@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
   location: { type: String, required: true },
   email: { type: String },
   dealershipLicenseNumber: { type: String }, // For Wholeseller and Retailer
-  dealershipLicense: { type: String }, // For Wholeseller and Retailer
+  dealershipLicenseImage: { type: String }, // For Wholeseller and Retailer
 
   // Products for Wholeseller and Retailer
   products: [
@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
   user_verified: { type: Boolean, default: false },
 
   // Role field: 0 for Wholeseller, 1 for Retailer, 2 for Delivery Partner
-  role: { type: Number, required: true, enum: [0, 1, 2] },
+  role: { type: Number, required: true, enum: [1, 2, 3] },
 });
 
 module.exports = mongoose.model("User", userSchema);

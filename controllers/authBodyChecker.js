@@ -1,4 +1,5 @@
 const { body } = require("express-validator");
+const Roles = require("../utils/roles");
 
 const validateAdminSignUpBody = [
   body("username")
@@ -51,7 +52,7 @@ const validateUserSignupBody = [
     .isNumeric()
     .isLength({ min: 10, max: 10 })
     .withMessage("Enter a valid mobile number"),
-  body("role").isIn([0, 1, 2]).withMessage("Invalid role specified"), // Role must be Wholeseller (0), Retailer (1), or Delivery Partner (2)
+  body("role").isIn(Object.values(Roles)).withMessage("Invalid role specified"), // Role must be Wholeseller (1), Retailer (2), or Delivery Partner (3)
 ];
 
 const validateUserLoginBody = [

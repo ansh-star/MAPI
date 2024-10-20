@@ -7,9 +7,11 @@ const { generateToken } = require("../utils/tokenGenerator");
 // Function to handle Admin signup
 const signupAdmin = async (req, res) => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
   }
+
   const { username, mobileNumber, location, adminKey } = req.body;
   try {
     const isExistUser = await Admin.findOne({ mobileNumber });
@@ -74,7 +76,7 @@ const signupUser = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        msg: "User already exists with this mobile number.",
+        message: "User already exists with this mobile number.",
       });
     }
 
@@ -129,7 +131,12 @@ const loginAdmin = async (req, res) => {
   const { mobileNumber, adminKey } = req.body;
 
   try {
-    const admin = await Admin.findOne({ mobileNumber, adminKey });
+    const admin = await Admin.findOne({ mobileNumber, adminKey })
+      .populate({
+        path: "wholesalerRequests", // Path to populate
+        match: { role: 1, user_verified: false }, // Condition: Only fetch users with role: 1 (wholesalers) and user_verified: false
+      })
+      .populate("productList");
     if (!admin) {
       return res
         .status(401)
@@ -157,7 +164,12 @@ const loginUser = async (req, res) => {
 
   try {
     // Check if the user exists by mobile number and username
-    const user = await User.findOne({ mobileNumber });
+    const user = await User.findOne({ mobileNumber })
+      .populate("product")
+      .populate({
+        path: "cart.productId", // Populates the 'productId' inside 'cart'
+      });
+
     if (!user) {
       return res.status(400).json({
         success: false,
