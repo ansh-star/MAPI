@@ -5,12 +5,6 @@ const Roles = require("../utils/roles");
 const addProduct = async (req, res) => {
   const { id, role } = req.user;
 
-  // delivery partner cannot add products
-  if (role === Roles.DELIVERY_PARTNER || role === Roles.RETAILER) {
-    res
-      .status(400)
-      .json({ success: false, message: "This role cannot add a product" });
-  }
   const {
     Medicine_Name,
     Composition,
@@ -38,23 +32,13 @@ const addProduct = async (req, res) => {
     if (role === Roles.WHOLESALER) {
       const userUpdated = await User.findOneAndUpdate(
         { _id: id },
-        { $push: { products: newProduct._id } },
-        { new: true }
-      )
-        .populate("products")
-        .populate({ path: "cart.productId" });
-
-      return res.status(201).json({
-        message: "Product created successfully",
-        product: newProduct.toObject(),
-        user: userUpdated.toObject(),
-      });
-    } else if (role === Roles.ADMIN) {
-      return res.status(201).json({
-        message: "Product created successfully",
-        product: newProduct.toObject(),
-      });
+        { $push: { products: newProduct._id } }
+      );
     }
+    return res.status(201).json({
+      message: "Product created successfully",
+      product: newProduct.toObject(),
+    });
   } catch (error) {
     res
       .status(500)

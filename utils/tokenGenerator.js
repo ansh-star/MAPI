@@ -1,9 +1,9 @@
 const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
+const Roles = require("./roles");
 
 // Secret key for signing the token (in production, store this securely, e.g., in environment variables)
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = "1h"; // Token validity period
 
 // Function to generate a token for a user
 const generateToken = (user) => {
@@ -13,13 +13,13 @@ const generateToken = (user) => {
     role: user.role, // 'admin', 'wholesaler', 'retailer', 'delivery'
   };
   // Generate a signed JWT token with the payload and secret
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET);
 };
 
 // Middleware to verify the token
 const verifyToken = (req, res, next) => {
   // Token is typically sent in the Authorization header (e.g., 'Bearer <token>')
-  const token = req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization.split(" ")[1];
 
   if (!token) {
     return res
@@ -37,4 +37,16 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = { generateToken, verifyToken };
+const verifyRole = (req, res, next) => {
+  const { role } = req.user;
+
+  if (role === Roles.DELIVERY_PARTNER || role === Roles.RETAILER) {
+    return res
+      .status(400)
+      .json({ success: false, message: "This role cannot add a product" });
+  }
+
+  next();
+};
+
+module.exports = { generateToken, verifyToken, verifyRole };

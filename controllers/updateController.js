@@ -92,19 +92,20 @@ const updateProducts = async (req, res) => {
   } = req.body;
   const { id: userId, role } = req.user;
   try {
-    if (role === Roles.DELIVERY_PARTNER || role === Roles.RETAILER) {
-      return res.status(400).json({
-        success: false,
-        message: "This role cannot update the product",
-      });
-    } else if (role === Roles.WHOLESALER) {
+    // check if the user is a wholesaler
+    if (role === Roles.WHOLESALER) {
+      // check if the product exists in the wholesaler products array
       const existsProduct = await User.findOne({ _id: userId, products: id });
+
+      // if it does not exists then user cannot change the product
       if (!existsProduct) {
         return res
           .status(400)
           .json({ success: false, message: "User cannot change this product" });
       }
     }
+
+    // update the product
     const updatedProduct = await Product.findOneAndUpdate(
       { _id: id },
       {
@@ -117,6 +118,8 @@ const updateProducts = async (req, res) => {
       },
       { new: true }
     );
+
+    // if product does not exists then return error
     if (!updatedProduct) {
       return res.status(400).json({
         success: false,
@@ -124,6 +127,7 @@ const updateProducts = async (req, res) => {
       });
     }
 
+    // Respond with success
     res.status(200).json({
       success: true,
       message: "Product updated Successfully",
@@ -136,8 +140,9 @@ const updateProducts = async (req, res) => {
 };
 
 const verifyUser = async (req, res) => {
-  const { id: adminId, role } = req.body;
+  const { id: adminId, role } = req.user;
 
+  // check if the user is an admin
   if (role !== Roles.ADMIN) {
     return res.status(400).json({
       success: false,
@@ -147,6 +152,7 @@ const verifyUser = async (req, res) => {
 
   const { id: userId, adminKey } = req.body;
   try {
+    // check if the admin exists
     const admin = await Admin.findOne({ _id: adminId, adminKey });
 
     if (!admin) {
@@ -155,13 +161,13 @@ const verifyUser = async (req, res) => {
         message: "Admin does not exists with this id.",
       });
     }
-
+    // verify the user
     const user = await User.findOneAndUpdate(
       { _id: userId },
       { isVerified: true },
       { new: true }
     );
-
+    // respond with success
     return res.status(200).json({
       success: true,
       message: "User verified successfully",

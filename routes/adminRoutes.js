@@ -20,6 +20,11 @@ router.post("/login", validateAdminLoginBody, loginAdmin);
 router.use(verifyToken);
 router.put("", updateAdminDetails);
 router.delete("", deleteAdminDetails);
-router.put("/verfiy-user", verifyUser);
 
+//verify user by admin
+router.put("/verfiy-user", verifyUser);
+router.post("/logut", (req, res) => {
+  res.clearCookie("token");
+  res.json({ success: true, message: "Logged out successfully" });
+});
 module.exports = router;

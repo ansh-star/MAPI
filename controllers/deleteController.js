@@ -51,17 +51,14 @@ const deleteProducts = async (req, res) => {
   const { id: userId, role } = req.user;
   const { id: productId } = req.body;
   try {
-    if (role === Roles.DELIVERY_PARTNER || role === Roles.RETAILER) {
-      return res.status(400).json({
-        success: false,
-        message: "This role cannot delete the product",
-      });
-    } else if (role === Roles.WHOLESALER) {
-      const userProductDeletion = await User.findOneAndUpdate(
+    // check if the user is a wholesaler
+    if (role === Roles.WHOLESALER) {
+      var userProductDeletion = await User.findOneAndUpdate(
         { _id: userId },
         { $pull: { products: productId } },
         { new: true }
       );
+      // if product not in the wholesaler products array the user cannot delete the product
       if (!userProductDeletion) {
         return res.status(400).json({
           success: false,
@@ -69,8 +66,10 @@ const deleteProducts = async (req, res) => {
         });
       }
     }
+    // delete the product
     const deletedProduct = await Product.findOneAndDelete({ _id: productId });
 
+    // no such product exists then return error
     if (!deletedProduct) {
       return res.status(400).json({
         success: false,
@@ -78,11 +77,13 @@ const deleteProducts = async (req, res) => {
       });
     }
 
+    // delete product from all users cart
     await User.updateMany(
       { "cart.productId": deletedProduct._id },
       { $pull: { cart: { productId: deletedProduct._id } } }
     );
 
+    // Respond with success
     res.status(200).json({
       success: true,
       message: "Product Deleted Successfully",

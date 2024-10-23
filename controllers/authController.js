@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const User = require("../models/User"); // Import your User model
 const { generateToken } = require("../utils/tokenGenerator");
+const Roles = require("../utils/roles");
 
 // Function to handle Admin signup
 const signupAdmin = async (req, res) => {
@@ -25,16 +26,13 @@ const signupAdmin = async (req, res) => {
 
     const admin = new Admin({ username, mobileNumber, location, adminKey });
     await admin.save();
+
     res.status(201).json({
       success: true,
       message: "Admin registered successfully!",
-      role: 3,
-      user: {
-        id: admin._id,
-        username: admin.username,
-        location: admin.location,
-      },
-      token: generateToken(admin),
+      role: Roles.ADMIN,
+      user: admin.toObject(),
+      token: generateToken({ _id: admin._id, role: Roles.ADMIN }),
     });
   } catch (error) {
     res.status(500).json({
@@ -80,8 +78,8 @@ const signupUser = async (req, res) => {
       });
     }
 
-    // If the role is Wholeseller (0) or Retailer (1), ensure mandatory fields are provided
-    if (role === 0 || role === 1) {
+    // If the role is Wholeseller (1) or Retailer (2), ensure mandatory fields are provided
+    if (role === Roles.WHOLESALER || role === Roles.RETAILER) {
       if (
         !shopOrHospitalName ||
         !dealershipLicenseNumber ||
@@ -113,6 +111,10 @@ const signupUser = async (req, res) => {
     // Save the user to the database
     await newUser.save();
 
+    if (role === Roles.WHOLESALER) {
+      await Admin.updateMany({ $push: { wholesalerRequests: newUser._id } });
+    }
+
     // Respond with success
     res.status(201).json({
       success: true,
@@ -131,25 +133,28 @@ const loginAdmin = async (req, res) => {
   const { mobileNumber, adminKey } = req.body;
 
   try {
+    // paging in product list
     const admin = await Admin.findOne({ mobileNumber, adminKey })
       .populate({
         path: "wholesalerRequests", // Path to populate
-        match: { role: 1, user_verified: false }, // Condition: Only fetch users with role: 1 (wholesalers) and user_verified: false
+        match: { role: Roles.WHOLESALER, user_verified: false }, // Condition: Only fetch users with role: 1 (wholesalers) and user_verified: false
+        options: { limit: 10 },
       })
-      .populate("productList");
+      .populate({ path: "productList", option: { limit: 10 } });
+
     if (!admin) {
       return res
         .status(401)
-        .json({ status: false, message: "Invalid credentials" });
+        .json({ success: false, message: "Invalid credentials" });
     }
 
-    const token = generateToken({ _id: admin._id, role: 3 });
+    const token = generateToken({ _id: admin._id, role: Roles.ADMIN });
 
-    res.json({
+    res.status(201).json({
       success: true,
       message: "Login successful",
       user: admin.toObject(),
-      token: generateToken(admin),
+      token,
     });
   } catch (error) {
     res
@@ -165,9 +170,10 @@ const loginUser = async (req, res) => {
   try {
     // Check if the user exists by mobile number and username
     const user = await User.findOne({ mobileNumber })
-      .populate("product")
+      .populate({ path: "products", option: { limit: 10 } })
       .populate({
         path: "cart.productId", // Populates the 'productId' inside 'cart'
+        options: { limit: 10 },
       });
 
     if (!user) {
@@ -180,16 +186,7 @@ const loginUser = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Login successful!",
-        user: {
-          id: user._id,
-          username: user.username,
-          fullName: user.fullName,
-          mobileNumber: user.mobileNumber,
-          role: user.role,
-          addressList: user.addressList,
-          products: user.products,
-          cart: user.cart,
-        },
+        user: user.toObject(),
         token: generateToken(user),
       });
     }
