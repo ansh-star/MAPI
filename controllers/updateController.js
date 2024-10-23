@@ -3,15 +3,33 @@ const Product = require("../models/Product");
 const User = require("../models/User");
 const Roles = require("../utils/roles");
 const updateAdminDetails = async (req, res) => {
-  const { username, mobileNumber, location } = req.body;
+  const { id, role } = req.user;
+
+  // check if the user is an admin
+  if (role !== Roles.ADMIN) {
+    return res.status(400).json({
+      success: false,
+      message: "This role cannot update the admin",
+    });
+  }
+
+  const { username, location, adminKey } = req.body;
+
+  // check if the admin key is provided
+  if (!adminKey) {
+    return res.status(400).json({
+      success: false,
+      message: "Admin key is required",
+    });
+  }
   try {
     const updatedAdmin = await Admin.findOneAndUpdate(
-      { _id: req.user, id },
-      { username, mobileNumber, location },
+      { _id: id, adminKey },
+      { username, location },
       { new: true }
-    );
+    ).select("-wholesalerRequests -productList");
 
-    if (!isExistUser) {
+    if (!updatedAdmin) {
       return res.status(200).json({
         success: false,
         message: "Admin does not exists",
@@ -20,7 +38,7 @@ const updateAdminDetails = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Admin registered successfully!",
+      message: "Admin updated successfully!",
       user: updatedAdmin.toObject(),
     });
   } catch (error) {
@@ -151,6 +169,13 @@ const verifyUser = async (req, res) => {
   }
 
   const { id: userId, adminKey } = req.body;
+
+  if (!adminKey) {
+    return res.status(400).json({
+      success: false,
+      message: "Admin key is required",
+    });
+  }
   try {
     // check if the admin exists
     const admin = await Admin.findOne({ _id: adminId, adminKey });
@@ -158,7 +183,7 @@ const verifyUser = async (req, res) => {
     if (!admin) {
       return res.status(400).json({
         success: false,
-        message: "Admin does not exists with this id.",
+        message: "Admin does not exists with this id or admin key",
       });
     }
     // verify the user

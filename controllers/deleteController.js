@@ -1,15 +1,30 @@
+const Admin = require("../models/Admin");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const Roles = require("../utils/roles");
 const deleteAdminDetails = async (req, res) => {
+  const { adminKey } = req.body;
+  const { role, id } = req.user;
+  if (!adminKey) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide admin key",
+    });
+  }
+  if (role !== Roles.ADMIN) {
+    return res.status(403).json({
+      success: false,
+      message: "You are not authorized to delete an admin",
+    });
+  }
   try {
     // Deleted a user
-    const deletedAdmin = await Admin.findOneAndDelete({ _id: req.user.id });
+    const deletedAdmin = await Admin.findOneAndDelete({ _id: id, adminKey });
 
     if (!deletedAdmin) {
       return res.status(400).json({
         success: false,
-        message: "Admin does not exists with this id.",
+        message: "Admin does not exists with this id and admin key.",
       });
     }
 
@@ -17,7 +32,6 @@ const deleteAdminDetails = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Admin deleted successfully!",
-      user: deletedAdmin.toObject(),
     });
   } catch (error) {
     console.error(error);
