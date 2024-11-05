@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const adminSchema = new mongoose.Schema({
   username: {
@@ -7,7 +7,7 @@ const adminSchema = new mongoose.Schema({
     unique: true,
   },
   mobileNumber: {
-    type: String,  // Changed to String to handle different formats
+    type: String, // Changed to String to handle different formats
     required: true,
     unique: true,
   },
@@ -17,26 +17,23 @@ const adminSchema = new mongoose.Schema({
   },
   adminKey: {
     type: String,
-    required: true,  // This key will differentiate an Admin user
+    required: true, // This key will differentiate an Admin user
     unique: true,
   },
-  wholesalerRequests: [  // Separate array for Wholesalers
+  wholesalerRequests: [
+    // Separate array for Wholesalers
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Wholesaler',
-    }
+      ref: "User",
+    },
   ],
-  retailerRequests: [  // Separate array for Retailers
+  productList: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Retailer',
-    }
+      ref: "Product",
+    },
   ],
-  productList: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-  }],
 });
 
-const Admin = mongoose.model('Admin', adminSchema);
+const Admin = mongoose.model("Admin", adminSchema);
 module.exports = Admin;
